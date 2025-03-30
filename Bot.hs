@@ -10,20 +10,26 @@ import Data.Char
 import Data.Maybe
 import Text.Regex.Posix
 
-days = [ ("Sat", "Sabado")
-       , ("Sun", "Domingo")
-       , ("Mon", "Lunes")
-       , ("Tue", "Martes")
-       , ("Wed", "Miercoles")
-       , ("Thu", "Jueves")
-       , ("Fri", "Viernes")
-       ]
-
 getValue :: Eq a => [(a, a)] -> a -> Maybe a
 getValue [] _ = Nothing
 getValue ((x, y):xs) input
   | x == input = Just y
   | otherwise = getValue xs input
+
+getDayName = unsafePerformIO
+             $ getZonedTime
+             >>= pure
+             . fromJust
+             . getValue days
+             . formatTime defaultTimeLocale "%a"
+  where days = [ ("Sat", "Sabado")
+               , ("Sun", "Domingo")
+               , ("Mon", "Lunes")
+               , ("Tue", "Martes")
+               , ("Wed", "Miercoles")
+               , ("Thu", "Jueves")
+               , ("Fri", "Viernes")
+               ]
 
 matchInt :: String -> String -> Maybe (String, String)
 matchInt [] [] = Nothing
@@ -42,6 +48,7 @@ group (x:xs)
                     rest = snd pair
                 in [digit] ++ group rest
 
+-- TODO: no operation precedence
 calculator :: [String] -> Int
 calculator [a] = read a :: Int
 calculator (x:y:z:xs) = calculator ([show $ result x y z] ++ xs)
@@ -64,18 +71,13 @@ getOperationResult input = "El resultado de la operacion es: "
   where getOperation = input =~ "cuanto es *" :: (String, String, String)
         getThird (a, b, c) = c
 
+responses :: [([String], String)]
 responses = [ (["hola", "buenas", "buen dia"], "Hola, como estas?")
-             , (["que dia es hoy?"], "Hoy es " ++ dayName)
+             , (["que dia es hoy?"], "Hoy es " ++ getDayName)
              , (["estoy bien"], "me alegro")
              , (["adios", "nos vemos", "hasta luego"], "hasta luego.")
              , (["gracias"], "de nada. Estoy aqui para ayudarte. Dime si necesitas ayuda en algo mas.")
              ]
-  where dayName = unsafePerformIO
-                  $ getZonedTime
-                  >>= pure
-                  . fromJust
-                  . getValue days
-                  . formatTime defaultTimeLocale "%a"
 
 responsesPattern :: [(String, (String -> String))]
 responsesPattern = [ ("cuanto es *", getOperationResult)
